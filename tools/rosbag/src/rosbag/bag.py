@@ -619,43 +619,23 @@ class Bag(object):
 
         except Exception as ex:
             raise        
+        
+    def _human_readable_version(self):
+        if self._version == 102 and type(self._reader) == _BagReader102_Unindexed:
+            return '1.2 (unindexed)'
+        else:
+            return '%d.%d' % (int(self._version / 100), self._version % 100)
 
     def __str__(self):
+        info = self.get_info()
         rows = []
 
         try:
-            if self._filename:
-                rows.append(('path', self._filename))
-
-            if self._version == 102 and type(self._reader) == _BagReader102_Unindexed:
-                rows.append(('version', '1.2 (unindexed)'))
-            else:
-                rows.append(('version', '%d.%d' % (int(self._version / 100), self._version % 100)))
-
-            if not self._connection_indexes and not self._chunks:
-                rows.append(('size', _human_readable_size(self.size)))
-            else:
-                if self._chunks:
-                    start_stamp = self._chunks[ 0].start_time.to_sec()
-                    end_stamp   = self._chunks[-1].end_time.to_sec()
-                else:
-                    start_stamp = min([index[ 0].time.to_sec() for index in self._connection_indexes.values()])
-                    end_stamp   = max([index[-1].time.to_sec() for index in self._connection_indexes.values()])
-    
-                # Show duration
-                duration = end_stamp - start_stamp
-                dur_secs = duration % 60
-                dur_mins = int(duration / 60)
-                dur_hrs  = int(dur_mins / 60)
-                if dur_hrs > 0:
-                    dur_mins = dur_mins % 60
-                    duration_str = '%dhr %d:%02ds (%ds)' % (dur_hrs, dur_mins, dur_secs, duration)
-                elif dur_mins > 0:
-                    duration_str = '%d:%02ds (%ds)' % (dur_mins, dur_secs, duration)
-                else:
-                    duration_str = '%.1fs' % duration   
-
-                rows.append(('duration', duration_str))
+            rows.append(('path', info.path))
+            rows.append(('version'), self._human_readable_version())
+            rows.append(('size', _human_readable_size(info.size)))
+            rows.append(('duration', _human_readable_duration(info.duration)))
+            rows.append(('messages'), info.messages)
         
                 # Show start and end times
                 rows.append(('start', '%s (%.2f)' % (_time_to_str(start_stamp), start_stamp)))
@@ -2511,6 +2491,24 @@ def _human_readable_frequency(freq):
         freq /= multiple
 
     return '-'
+
+def _human_readable_duration(duration):
+    dur_secs = duration % 60
+    dur_mins = int(duration / 60)
+    dur_hrs  = int(dur_mins / 60)
+    
+    if dur_hrs > 0:
+        dur_mins = dur_mins % 60
+        duration_str = '%dhr %d:%02ds (%ds)' % (dur_hrs, dur_mins, dur_secs, duration)
+    elif dur_mins > 0:
+        duration_str = '%d:%02ds (%ds)' % (dur_mins, dur_secs, duration)
+    else:
+        duration_str = '%.1fs' % duration       
+        
+    return duration_str
+
+def _human_readable_timestamp(timestamp):
+    return '%s (%.2f)' % (_time_to_str(timestamp), timestamp)
 
 ## See http://code.activestate.com/recipes/511509
 def _mergesort(list_of_lists, key=None):
